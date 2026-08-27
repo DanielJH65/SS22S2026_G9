@@ -28,7 +28,6 @@ Los archivos originales están en `dataset/`:
   `delivery_h3`) para simplificar el modelo.
 - Columna calculada `dias_retraso` en `fact_deliveries` (diferencia entre fecha real y
   fecha estimada de entrega).
-- Pasos detallados y exactos en [`GUIA_CONSTRUCCION.md`](./GUIA_CONSTRUCCION.md).
 
 ## 3. Modelo de datos (relaciones)
 
@@ -81,18 +80,3 @@ las tarjetas del dashboard una vez construido en Power BI)*
   entregas falla**, lo cual amerita una revisión del proceso logístico o del
   proveedor de envíos si estos datos reflejaran una operación real.
 
-## 6. Cómo se construyó
-
-Ver guía detallada paso a paso: [`GUIA_CONSTRUCCION.md`](./GUIA_CONSTRUCCION.md).
-
-## 7. Contenido de este repositorio
-
-```
-SS22S2026_G9/
-└── Tarea2/
-    ├── Tarea2.pbix              (crear en Power BI Desktop, ver guía)
-    ├── README.md                (este archivo)
-    ├── GUIA_CONSTRUCCION.md     (pasos exactos para Power BI Desktop)
-    ├── dataset/                 (5 CSV de origen)
-    └── screenshots/             (capturas del dashboard y del modelo)
-```
