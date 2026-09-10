@@ -37,7 +37,7 @@ Practica2/
 
 Se implementó un **esquema de estrella** con `Hechos_Vuelos` como tabla de hechos central y cinco dimensiones alrededor.
 
-![Modelo en estrella](modelo-estrella.png)
+![Modelo en estrella](screenshots/modelo_relaciones.png)
 
 ### 4.1 Manejo de la dimensión de rol (Aeropuerto)
 
@@ -134,7 +134,19 @@ Se implementó como tarjeta con formato condicional (color de fondo según las r
 - Estado del vuelo (`Hechos_Vuelos[Estado_Vuelo]`).
 - Clase de servicio (`Dim_Clase_SCD2[Descripcion_Clase]`).
 
-Capturas: ver carpeta [`screenshots/`](screenshots/).
+Capturas: 
+
+### Página 1 — Resumen Ejecutivo
+![Resumen Ejecutivo](screenshots/resumen_ejecutivo.png)
+
+### Página 2 — Operaciones y Clientes
+![Operaciones y Clientes](screenshots/operaciones_clientes.png)
+
+### KPI de Puntualidad (semáforo)
+![KPI Puntualidad](screenshots/kpi_puntualidad.png)
+
+### Vista Modelo — Relaciones
+![Vista Modelo](screenshots/modelo_relaciones.png)
 
 | Archivo | Contenido esperado |
 |---|---|
