@@ -1,0 +1,92 @@
+EVIDENCIA · DAG sgfood_elt (Airflow 3.3.2)
+==============================================================================
+
+Corrida: evidencia_1_corrida_limpia
+  estado: success   inicio: 2026-10-08T02:21:52.796647+00:00   fin: 2026-10-08T02:31:57.581579+00:00
+    preparar_lote[]                                  success
+    verificar_fuentes[]                              success
+    extraccion_carga.listar_tablas_oltp[]            success
+    extraccion_carga.listar_archivos_csv[]           success
+    extraccion_carga.cargar_csv[2]                   success
+    extraccion_carga.cargar_csv[3]                   success
+    extraccion_carga.cargar_csv[4]                   success
+    extraccion_carga.cargar_tabla_oltp[3]            success
+    extraccion_carga.cargar_tabla_oltp[2]            success
+    extraccion_carga.cargar_tabla_oltp[6]            success
+    extraccion_carga.cargar_tabla_oltp[4]            success
+    extraccion_carga.cargar_csv[0]                   success
+    extraccion_carga.cargar_tabla_oltp[1]            success
+    extraccion_carga.cargar_csv[1]                   success
+    extraccion_carga.cargar_tabla_oltp[5]            success
+    extraccion_carga.cargar_tabla_oltp[0]            success
+    decidir_inyeccion[]                              success
+    inyectar_casos_calidad[]                         skipped
+    sin_inyeccion[]                                  success
+    datos_en_raw[]                                   success
+    transformacion_dbt.dbt_deps[]                    success
+    transformacion_dbt.dbt_source_freshness[]        success
+    transformacion_dbt.dbt_build_staging[]           success
+    transformacion_dbt.dbt_build_marts[]             success
+    transformacion_dbt.dbt_docs_generate[]           success
+    validaciones_sql[]                               success
+    resumen_ejecucion[]                              success
+
+Corrida: evidencia_2_casos_calidad
+  estado: failed   inicio: 2026-10-08T02:32:05.968006+00:00   fin: 2026-10-08T03:13:08.855619+00:00
+    preparar_lote[]                                  success
+    verificar_fuentes[]                              success
+    extraccion_carga.listar_tablas_oltp[]            success
+    extraccion_carga.listar_archivos_csv[]           success
+    extraccion_carga.cargar_csv[3]                   success
+    extraccion_carga.cargar_csv[2]                   success
+    extraccion_carga.cargar_csv[4]                   success
+    extraccion_carga.cargar_csv[0]                   success
+    extraccion_carga.cargar_csv[1]                   success
+    extraccion_carga.cargar_tabla_oltp[3]            success
+    extraccion_carga.cargar_tabla_oltp[4]            success
+    extraccion_carga.cargar_tabla_oltp[2]            success
+    extraccion_carga.cargar_tabla_oltp[5]            success
+    extraccion_carga.cargar_tabla_oltp[6]            success
+    extraccion_carga.cargar_tabla_oltp[1]            success
+    extraccion_carga.cargar_tabla_oltp[0]            success
+    decidir_inyeccion[]                              success
+    sin_inyeccion[]                                  skipped
+    inyectar_casos_calidad[]                         success
+    datos_en_raw[]                                   success
+    transformacion_dbt.dbt_deps[]                    success
+    transformacion_dbt.dbt_source_freshness[]        success
+    transformacion_dbt.dbt_build_staging[]           failed
+    transformacion_dbt.dbt_build_marts[]             upstream_failed
+    transformacion_dbt.dbt_docs_generate[]           upstream_failed
+    validaciones_sql[]                               upstream_failed
+    resumen_ejecucion[]                              failed
+
+Corrida: evidencia_3_corrida_limpia
+  estado: success   inicio: 2026-10-08T03:13:21.299091+00:00   fin: 2026-10-08T03:14:58.156630+00:00
+    preparar_lote[]                                  success
+    verificar_fuentes[]                              success
+    extraccion_carga.listar_archivos_csv[]           success
+    extraccion_carga.listar_tablas_oltp[]            success
+    extraccion_carga.cargar_csv[2]                   success
+    extraccion_carga.cargar_csv[3]                   success
+    extraccion_carga.cargar_csv[4]                   success
+    extraccion_carga.cargar_csv[1]                   success
+    extraccion_carga.cargar_csv[0]                   success
+    extraccion_carga.cargar_tabla_oltp[5]            success
+    extraccion_carga.cargar_tabla_oltp[3]            success
+    extraccion_carga.cargar_tabla_oltp[4]            success
+    extraccion_carga.cargar_tabla_oltp[6]            success
+    extraccion_carga.cargar_tabla_oltp[1]            success
+    extraccion_carga.cargar_tabla_oltp[0]            success
+    extraccion_carga.cargar_tabla_oltp[2]            success
+    decidir_inyeccion[]                              success
+    inyectar_casos_calidad[]                         skipped
+    sin_inyeccion[]                                  success
+    datos_en_raw[]                                   success
+    transformacion_dbt.dbt_deps[]                    success
+    transformacion_dbt.dbt_source_freshness[]        success
+    transformacion_dbt.dbt_build_staging[]           success
+    transformacion_dbt.dbt_build_marts[]             success
+    transformacion_dbt.dbt_docs_generate[]           success
+    validaciones_sql[]                               success
+    resumen_ejecucion[]                              success

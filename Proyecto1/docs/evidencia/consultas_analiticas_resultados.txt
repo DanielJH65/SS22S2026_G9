@@ -1,0 +1,419 @@
+WITH mensual AS (
+    SELECT d.anio_mes,
+           sum(f.monto_neto)          AS venta_neta,
+           sum(f.margen_bruto)        AS margen_bruto,
+           count(DISTINCT f.id_venta) AS num_ventas
+    FROM marts.fct_ventas f
+    JOIN marts.dim_fecha d ON d.sk_fecha = f.sk_fecha
+    WHERE f.es_venta_valida
+    GROUP BY d.anio_mes
+)
+SELECT anio_mes,
+       venta_neta,
+       margen_bruto,
+       round(margen_bruto / venta_neta * 100, 2)                               AS margen_pct,
+       num_ventas,
+       round(venta_neta / num_ventas, 2)                                       AS ticket_promedio,
+       round((venta_neta / lag(venta_neta) OVER (ORDER BY anio_mes) - 1) * 100, 2) AS variacion_pct
+FROM mensual
+ORDER BY anio_mes;
+ anio_mes | venta_neta | margen_bruto | margen_pct | num_ventas | ticket_promedio | variacion_pct 
+----------+------------+--------------+------------+------------+-----------------+---------------
+ 2026-01  |  127301.01 |     33336.18 |      26.19 |        169 |          753.26 |              
+ 2026-02  |   88067.05 |     23299.95 |      26.46 |        128 |          688.02 |        -30.82
+ 2026-03  |   84648.29 |     21964.62 |      25.95 |        130 |          651.14 |         -3.88
+ 2026-04  |   93334.92 |     25718.34 |      27.55 |        140 |          666.68 |         10.26
+ 2026-05  |  102375.15 |     27554.59 |      26.92 |        142 |          720.95 |          9.69
+ 2026-06  |   99628.58 |     26613.17 |      26.71 |        141 |          706.59 |         -2.68
+ 2026-07  |   96752.93 |     26125.11 |      27.00 |        153 |          632.37 |         -2.89
+ 2026-08  |   88093.79 |     23646.56 |      26.84 |        126 |          699.16 |         -8.95
+(8 rows)
+
+SELECT p.categoria,
+       p.marca,
+       sum(f.monto_neto)                                              AS venta_neta,
+       sum(f.margen_bruto)                                            AS margen_bruto,
+       round(sum(f.margen_bruto) / sum(f.monto_neto) * 100, 2)        AS margen_pct,
+       round(sum(f.monto_neto) / sum(sum(f.monto_neto)) OVER () * 100, 2) AS participacion_pct
+FROM marts.fct_ventas f
+JOIN marts.dim_producto p ON p.sk_producto = f.sk_producto
+WHERE f.es_venta_valida
+GROUP BY p.categoria, p.marca
+ORDER BY venta_neta DESC
+LIMIT 15;
+    categoria     |   marca    | venta_neta | margen_bruto | margen_pct | participacion_pct 
+------------------+------------+------------+--------------+------------+-------------------
+ Snacks           | SaborMax   |   19516.00 |      5310.20 |      27.21 |              2.50
+ Limpieza         | CasaReal   |   18337.30 |      4079.06 |      22.24 |              2.35
+ Panadería        | FrescaVida |   17660.10 |      4642.11 |      26.29 |              2.26
+ Snacks           | Selecta    |   17550.30 |      5649.72 |      32.19 |              2.25
+ Abarrotes        | DeliFoods  |   17512.35 |      5917.41 |      33.79 |              2.24
+ Limpieza         | FrescaVida |   16839.26 |      5274.91 |      31.33 |              2.16
+ Abarrotes        | NutriPlus  |   16743.61 |      5075.71 |      30.31 |              2.15
+ Bebidas          | CasaReal   |   16216.60 |      2413.08 |      14.88 |              2.08
+ Lácteos          | NutriPlus  |   16212.00 |      3089.55 |      19.06 |              2.08
+ Panadería        | Nova       |   16145.47 |      5321.47 |      32.96 |              2.07
+ Limpieza         | BuenDía    |   16142.23 |      5121.33 |      31.73 |              2.07
+ Bebidas          | PuraMesa   |   15747.05 |      4595.67 |      29.18 |              2.02
+ Cuidado personal | NutriPlus  |   15672.36 |      4110.60 |      26.23 |              2.01
+ Bebidas          | Selecta    |   15646.56 |      3921.83 |      25.07 |              2.01
+ Limpieza         | NutriPlus  |   15300.15 |      3681.75 |      24.06 |              1.96
+(15 rows)
+
+SELECT rank() OVER (ORDER BY sum(f.monto_neto) DESC) AS ranking,
+       p.sku,
+       p.nombre_producto,
+       p.categoria,
+       sum(f.cantidad)                                          AS unidades,
+       sum(f.monto_neto)                                        AS venta_neta,
+       round(sum(f.margen_bruto) / sum(f.monto_neto) * 100, 2)  AS margen_pct
+FROM marts.fct_ventas f
+JOIN marts.dim_producto p ON p.sk_producto = f.sk_producto
+WHERE f.es_venta_valida
+GROUP BY p.sku, p.nombre_producto, p.categoria
+ORDER BY ranking
+LIMIT 10;
+ ranking |   sku   |   nombre_producto   | categoria | unidades | venta_neta | margen_pct 
+---------+---------+---------------------+-----------+----------+------------+------------
+       1 | SG02007 | Palomitas           | Snacks    |      278 |   19516.00 |      27.21
+       2 | SG05004 | Cloro               | Limpieza  |      272 |   18337.30 |      22.24
+       3 | SG08006 | Muffin chocolate    | Panadería |      293 |   17660.10 |      26.29
+       4 | SG02005 | Barra cereal        | Snacks    |      241 |   17550.30 |      32.19
+       5 | SG04009 | Atún en lata        | Abarrotes |      266 |   17512.35 |      33.79
+       6 | SG05002 | Jabón de platos     | Limpieza  |      235 |   16839.26 |      31.33
+       7 | SG04007 | Aceite vegetal      | Abarrotes |      230 |   16743.61 |      30.31
+       8 | SG01002 | Bebida de naranja   | Bebidas   |      256 |   16216.60 |      14.88
+       9 | SG03009 | Bebida láctea       | Lácteos   |      241 |   16212.00 |      19.06
+      10 | SG08004 | Galleta mantequilla | Panadería |      205 |   16145.47 |      32.96
+(10 rows)
+
+SELECT nombre_sucursal,
+       sum(meta_ventas)                                       AS meta_total,
+       sum(venta_neta)                                        AS venta_total,
+       round(sum(venta_neta) / sum(meta_ventas) * 100, 2)     AS cumplimiento_pct,
+       sum(monto_devuelto)                                    AS devoluciones,
+       rank() OVER (ORDER BY sum(venta_neta) / sum(meta_ventas) DESC) AS ranking
+FROM marts.mart_cumplimiento_metas
+GROUP BY nombre_sucursal
+ORDER BY ranking;
+  nombre_sucursal  | meta_total | venta_total | cumplimiento_pct | devoluciones | ranking 
+-------------------+------------+-------------+------------------+--------------+---------
+ Villa Nueva       | 1376842.79 |   149831.60 |            10.88 |      1041.84 |       1
+ Central Guatemala | 1440639.23 |   139839.95 |             9.71 |      1278.65 |       2
+ Escuintla         | 1555405.49 |   129392.30 |             8.32 |       947.72 |       3
+ Mixco             | 1591727.76 |   122146.08 |             7.67 |      1252.43 |       4
+ Amatitlán         | 1615970.34 |   120463.79 |             7.45 |       565.81 |       5
+ Antigua           | 1677006.95 |   118528.00 |             7.07 |      1288.34 |       6
+(6 rows)
+
+SELECT c.canal,
+       c.metodo_pago,
+       count(DISTINCT f.id_venta)                                                    AS ventas,
+       count(DISTINCT f.id_venta) FILTER (WHERE c.estado_venta = 'ANULADA')          AS anuladas,
+       round(count(DISTINCT f.id_venta) FILTER (WHERE c.estado_venta = 'ANULADA')::numeric
+             / count(DISTINCT f.id_venta) * 100, 2)                                  AS tasa_anulacion_pct,
+       sum(f.monto_neto) FILTER (WHERE f.es_venta_valida)                            AS venta_neta
+FROM marts.fct_ventas f
+JOIN marts.dim_condicion_venta c ON c.sk_condicion_venta = f.sk_condicion_venta
+GROUP BY c.canal, c.metodo_pago
+ORDER BY venta_neta DESC;
+   canal   |  metodo_pago  | ventas | anuladas | tasa_anulacion_pct | venta_neta 
+-----------+---------------+--------+----------+--------------------+------------
+ Mayorista | Transferencia |     76 |        2 |               2.63 |   91720.39
+ Mayorista | Efectivo      |     70 |        4 |               5.71 |   80907.88
+ Mayorista | Tarjeta       |     77 |        4 |               5.19 |   79496.62
+ Mayorista | Crédito       |     67 |        5 |               7.46 |   76318.72
+ Tienda    | Tarjeta       |    142 |        5 |               3.52 |   71317.21
+ Tienda    | Efectivo      |    145 |        7 |               4.83 |   71086.59
+ Tienda    | Transferencia |    140 |        7 |               5.00 |   58990.47
+ Tienda    | Crédito       |    112 |        4 |               3.57 |   53033.28
+ Televenta | Efectivo      |     58 |        0 |               0.00 |   31687.55
+ Televenta | Tarjeta       |     61 |        1 |               1.64 |   30151.78
+ Web       | Tarjeta       |     44 |        0 |               0.00 |   25291.51
+ Televenta | Transferencia |     43 |        1 |               2.33 |   25244.61
+ Web       | Efectivo      |     45 |        3 |               6.67 |   22312.00
+ Web       | Transferencia |     46 |        4 |               8.70 |   22228.18
+ Web       | Crédito       |     38 |        1 |               2.63 |   21065.92
+ Televenta | Crédito       |     36 |        0 |               0.00 |   19349.01
+(16 rows)
+
+SELECT p.categoria,
+       CASE WHEN pr.id_promocion = -1 THEN 'Sin promoción' ELSE 'Con promoción' END AS tipo,
+       count(*)                                    AS lineas,
+       round(avg(f.cantidad), 2)                   AS unidades_promedio_linea,
+       round(avg(f.descuento_pct) * 100, 2)        AS descuento_promedio_pct,
+       sum(f.monto_neto)                           AS venta_neta
+FROM marts.fct_ventas f
+JOIN marts.dim_producto p   ON p.sk_producto = f.sk_producto
+JOIN marts.dim_promocion pr ON pr.sk_promocion = f.sk_promocion
+WHERE f.es_venta_valida
+GROUP BY p.categoria, tipo
+ORDER BY p.categoria, tipo;
+    categoria     |     tipo      | lineas | unidades_promedio_linea | descuento_promedio_pct | venta_neta 
+------------------+---------------+--------+-------------------------+------------------------+------------
+ Abarrotes        | Con promoción |     57 |                    5.56 |                   2.11 |   13644.42
+ Abarrotes        | Sin promoción |    325 |                    5.90 |                   2.34 |   77390.47
+ Bebidas          | Con promoción |     44 |                    6.20 |                   2.61 |   11285.58
+ Bebidas          | Sin promoción |    344 |                    6.16 |                   2.28 |   84498.46
+ Congelados       | Con promoción |     74 |                    6.15 |                   2.77 |   17409.36
+ Congelados       | Sin promoción |    318 |                    6.28 |                   2.42 |   75294.17
+ Cuidado personal | Con promoción |     48 |                    6.40 |                   3.44 |   11183.22
+ Cuidado personal | Sin promoción |    307 |                    5.49 |                   2.52 |   72508.94
+ Lácteos          | Con promoción |     71 |                    4.90 |                   3.38 |   14432.60
+ Lácteos          | Sin promoción |    300 |                    6.02 |                   2.85 |   78078.83
+ Limpieza         | Con promoción |     67 |                    5.75 |                   2.91 |   18114.48
+ Limpieza         | Sin promoción |    304 |                    6.15 |                   2.35 |   92880.55
+ Panadería        | Con promoción |    125 |                    5.70 |                   2.00 |   28558.00
+ Panadería        | Sin promoción |    250 |                    6.21 |                   2.32 |   65561.60
+ Snacks           | Con promoción |    144 |                    5.74 |                   2.78 |   44391.98
+ Snacks           | Sin promoción |    236 |                    5.90 |                   2.27 |   74969.06
+(16 rows)
+
+SELECT p.categoria,
+       d.motivo,
+       count(*)                AS devoluciones,
+       sum(d.cantidad_devuelta) AS unidades,
+       sum(d.monto_devuelto)   AS monto_devuelto,
+       round(avg(d.dias_desde_venta), 1) AS dias_promedio_desde_venta
+FROM marts.fct_devoluciones d
+JOIN marts.dim_producto p ON p.sk_producto = d.sk_producto
+GROUP BY ROLLUP (p.categoria, d.motivo)
+ORDER BY p.categoria NULLS LAST, monto_devuelto DESC;
+    categoria     |       motivo        | devoluciones | unidades | monto_devuelto | dias_promedio_desde_venta 
+------------------+---------------------+--------------+----------+----------------+---------------------------
+ Abarrotes        |                     |           13 |       21 |         769.12 |                       9.4
+ Abarrotes        | Producto dañado     |            7 |        9 |         259.20 |                       9.3
+ Abarrotes        | Error de despacho   |            1 |        3 |         203.79 |                       8.0
+ Abarrotes        | Vencimiento cercano |            2 |        3 |         161.63 |                      10.5
+ Abarrotes        | Cliente desistió    |            3 |        6 |         144.50 |                       9.3
+ Bebidas          |                     |            7 |       13 |         408.44 |                       9.3
+ Bebidas          | Error de despacho   |            1 |        3 |         198.84 |                      20.0
+ Bebidas          | Empaque defectuoso  |            3 |        6 |         169.98 |                       8.0
+ Bebidas          | Cliente desistió    |            3 |        4 |          39.62 |                       7.0
+ Congelados       |                     |            8 |       17 |         736.16 |                      11.1
+ Congelados       | Empaque defectuoso  |            1 |        3 |         203.91 |                      15.0
+ Congelados       | Vencimiento cercano |            3 |        6 |         185.32 |                      11.7
+ Congelados       | Error de despacho   |            2 |        4 |         142.02 |                       7.5
+ Congelados       | Cliente desistió    |            1 |        3 |         141.87 |                       4.0
+ Congelados       | Producto dañado     |            1 |        1 |          63.04 |                      20.0
+ Cuidado personal |                     |            8 |       14 |         492.74 |                       8.6
+ Cuidado personal | Empaque defectuoso  |            2 |        5 |         204.36 |                       9.5
+ Cuidado personal | Cliente desistió    |            3 |        4 |         171.83 |                       7.0
+ Cuidado personal | Error de despacho   |            2 |        4 |          98.74 |                      12.0
+ Cuidado personal | Vencimiento cercano |            1 |        1 |          17.81 |                       5.0
+ Lácteos          |                     |           16 |       31 |        1326.52 |                      10.1
+ Lácteos          | Producto dañado     |            5 |       12 |         642.76 |                       8.6
+ Lácteos          | Empaque defectuoso  |            4 |        9 |         278.75 |                      12.8
+ Lácteos          | Vencimiento cercano |            2 |        3 |         161.88 |                      11.0
+ Lácteos          | Cliente desistió    |            3 |        5 |         136.06 |                       6.0
+ Lácteos          | Error de despacho   |            2 |        2 |         107.07 |                      14.0
+ Limpieza         |                     |           11 |       19 |         904.07 |                      10.1
+ Limpieza         | Error de despacho   |            3 |        5 |         298.04 |                       9.3
+ Limpieza         | Vencimiento cercano |            3 |        5 |         222.55 |                       9.3
+ Limpieza         | Producto dañado     |            2 |        5 |         198.12 |                       6.0
+ Limpieza         | Empaque defectuoso  |            3 |        4 |         185.36 |                      14.3
+ Panadería        |                     |           10 |       23 |        1052.58 |                       9.8
+ Panadería        | Vencimiento cercano |            3 |        6 |         415.68 |                       9.3
+ Panadería        | Error de despacho   |            3 |        6 |         285.83 |                      11.0
+ Panadería        | Cliente desistió    |            3 |        8 |         254.38 |                       9.0
+ Panadería        | Producto dañado     |            1 |        3 |          96.69 |                      10.0
+ Snacks           |                     |            7 |       11 |         685.16 |                       7.6
+ Snacks           | Producto dañado     |            3 |        5 |         298.30 |                       5.3
+ Snacks           | Empaque defectuoso  |            2 |        3 |         165.04 |                       6.0
+ Snacks           | Cliente desistió    |            1 |        2 |         160.30 |                      12.0
+ Snacks           | Vencimiento cercano |            1 |        1 |          61.52 |                      13.0
+                  |                     |           80 |      149 |        6374.79 |                       9.6
+(42 rows)
+
+SELECT nombre_sucursal,
+       count(*) FILTER (WHERE estado_stock = 'SIN STOCK')    AS sin_stock,
+       count(*) FILTER (WHERE estado_stock = 'BAJO MÍNIMO')  AS bajo_minimo,
+       count(*) FILTER (WHERE estado_stock = 'SOBRE STOCK')  AS sobre_stock,
+       count(*) FILTER (WHERE vence_en_60_dias)              AS vencen_en_60_dias,
+       sum(valor_inventario)                                 AS valor_inventario
+FROM marts.mart_alertas_inventario
+GROUP BY nombre_sucursal
+ORDER BY valor_inventario DESC;
+  nombre_sucursal  | sin_stock | bajo_minimo | sobre_stock | vencen_en_60_dias | valor_inventario 
+-------------------+-----------+-------------+-------------+-------------------+------------------
+ Mixco             |         1 |           2 |           8 |                 5 |        123777.49
+ Escuintla         |         6 |           5 |           3 |                 3 |        122543.82
+ Amatitlán         |         1 |           3 |           8 |                 4 |        121938.31
+ Antigua           |         2 |           7 |           4 |                 5 |        120284.77
+ Villa Nueva       |         5 |           3 |           2 |                 5 |        107534.24
+ Central Guatemala |        11 |           4 |           3 |                 4 |        105546.76
+(6 rows)
+
+SELECT nombre_sucursal, sku, nombre_producto, stock_disponible, stock_minimo,
+       unidades_promedio_mes, estado_stock
+FROM marts.mart_alertas_inventario
+WHERE estado_stock IN ('SIN STOCK', 'BAJO MÍNIMO')
+  AND unidades_promedio_mes > 0
+ORDER BY unidades_promedio_mes DESC
+LIMIT 15;
+  nombre_sucursal  |   sku   | nombre_producto | stock_disponible | stock_minimo | unidades_promedio_mes | estado_stock 
+-------------------+---------+-----------------+------------------+--------------+-----------------------+--------------
+ Amatitlán         | SG02001 | Papas clásicas  |                6 |            8 |                 13.67 | BAJO MÍNIMO
+ Central Guatemala | SG04004 | Harina de maíz  |                8 |           10 |                 13.33 | BAJO MÍNIMO
+ Central Guatemala | SG02001 | Papas clásicas  |                7 |           22 |                 11.33 | BAJO MÍNIMO
+ Amatitlán         | SG06009 | Papel higiénico |               11 |           19 |                  8.67 | BAJO MÍNIMO
+ Central Guatemala | SG02004 | Galleta salada  |                0 |            8 |                  8.67 | SIN STOCK
+ Central Guatemala | SG07007 | Hamburguesa     |                0 |            9 |                  8.33 | SIN STOCK
+ Villa Nueva       | SG05009 | Limpiador piso  |                0 |           16 |                  7.00 | SIN STOCK
+ Antigua           | SG05005 | Limpiavidrios   |                0 |           24 |                  6.67 | SIN STOCK
+ Villa Nueva       | SG08009 | Pastelito       |                0 |           10 |                  6.00 | SIN STOCK
+ Central Guatemala | SG06005 | Cepillo dental  |                0 |           10 |                  6.00 | SIN STOCK
+ Villa Nueva       | SG08007 | Croissant       |               12 |           19 |                  6.00 | BAJO MÍNIMO
+ Amatitlán         | SG06005 | Cepillo dental  |                3 |           17 |                  5.67 | BAJO MÍNIMO
+ Mixco             | SG08005 | Pan dulce       |               13 |           19 |                  5.33 | BAJO MÍNIMO
+ Central Guatemala | SG02002 | Papas BBQ       |                0 |           20 |                  4.33 | SIN STOCK
+ Escuintla         | SG01008 | Agua con gas    |               14 |           15 |                  4.33 | BAJO MÍNIMO
+(15 rows)
+
+SELECT d.anio_mes,
+       p.categoria,
+       sum(i.stock_disponible) AS unidades_en_stock,
+       sum(i.valor_inventario) AS valor_inventario
+FROM marts.fct_inventario_mensual i
+JOIN marts.dim_fecha d    ON d.sk_fecha = i.sk_fecha_corte
+JOIN marts.dim_producto p ON p.sk_producto = i.sk_producto
+GROUP BY d.anio_mes, p.categoria
+ORDER BY d.anio_mes, valor_inventario DESC;
+ anio_mes |    categoria     | unidades_en_stock | valor_inventario 
+----------+------------------+-------------------+------------------
+ 2026-01  | Snacks           |              2765 |        108664.05
+ 2026-01  | Limpieza         |              2886 |        104247.32
+ 2026-01  | Lácteos          |              2873 |         94769.49
+ 2026-01  | Congelados       |              3388 |         93133.14
+ 2026-01  | Panadería        |              2872 |         86709.49
+ 2026-01  | Cuidado personal |              2984 |         86258.10
+ 2026-01  | Abarrotes        |              2761 |         80921.41
+ 2026-01  | Bebidas          |              2604 |         75670.87
+ 2026-02  | Snacks           |              3225 |        128956.96
+ 2026-02  | Limpieza         |              3003 |        106264.63
+ 2026-02  | Lácteos          |              2694 |         90712.35
+ 2026-02  | Panadería        |              3057 |         88368.51
+ 2026-02  | Abarrotes        |              2812 |         80899.59
+ 2026-02  | Cuidado personal |              2634 |         79464.36
+ 2026-02  | Bebidas          |              2663 |         75095.15
+ 2026-02  | Congelados       |              2367 |         62170.51
+ 2026-03  | Snacks           |              2600 |        105558.33
+ 2026-03  | Limpieza         |              2784 |         94295.53
+ 2026-03  | Lácteos          |              2684 |         89460.54
+ 2026-03  | Congelados       |              3070 |         83815.91
+ 2026-03  | Bebidas          |              2949 |         82178.70
+ 2026-03  | Panadería        |              2586 |         76164.95
+ 2026-03  | Abarrotes        |              2853 |         75740.76
+ 2026-03  | Cuidado personal |              2511 |         71874.05
+ 2026-04  | Snacks           |              3098 |        129925.61
+ 2026-04  | Limpieza         |              2830 |        103480.02
+ 2026-04  | Lácteos          |              3084 |        101521.07
+ 2026-04  | Panadería        |              3170 |         91311.50
+ 2026-04  | Congelados       |              3153 |         87726.67
+ 2026-04  | Bebidas          |              2825 |         82992.91
+ 2026-04  | Cuidado personal |              2647 |         79096.23
+ 2026-04  | Abarrotes        |              2617 |         76282.87
+ 2026-05  | Snacks           |              2965 |        116997.71
+ 2026-05  | Limpieza         |              2733 |         97804.04
+ 2026-05  | Lácteos          |              2759 |         89449.15
+ 2026-05  | Cuidado personal |              2952 |         88339.97
+ 2026-05  | Panadería        |              2816 |         87919.74
+ 2026-05  | Bebidas          |              2581 |         78121.70
+ 2026-05  | Congelados       |              2706 |         77932.23
+ 2026-05  | Abarrotes        |              2703 |         75173.45
+ 2026-06  | Snacks           |              3173 |        125449.58
+ 2026-06  | Limpieza         |              2897 |        102518.80
+ 2026-06  | Lácteos          |              2727 |         90722.83
+ 2026-06  | Abarrotes        |              2838 |         86799.55
+ 2026-06  | Congelados       |              2959 |         81844.66
+ 2026-06  | Bebidas          |              2656 |         79604.72
+ 2026-06  | Cuidado personal |              2752 |         77664.34
+ 2026-06  | Panadería        |              2505 |         73376.73
+ 2026-07  | Snacks           |              2658 |        100586.45
+ 2026-07  | Panadería        |              3083 |         92800.56
+ 2026-07  | Limpieza         |              2537 |         89392.50
+ 2026-07  | Lácteos          |              2707 |         86546.18
+ 2026-07  | Abarrotes        |              2785 |         81669.73
+ 2026-07  | Congelados       |              2795 |         77531.94
+ 2026-07  | Bebidas          |              2509 |         75355.48
+ 2026-07  | Cuidado personal |              2615 |         74440.62
+ 2026-08  | Snacks           |              2698 |        105069.01
+ 2026-08  | Abarrotes        |              3090 |         89261.41
+ 2026-08  | Limpieza         |              2531 |         88219.14
+ 2026-08  | Lácteos          |              2638 |         87563.41
+ 2026-08  | Bebidas          |              2836 |         87297.67
+ 2026-08  | Panadería        |              2860 |         85341.16
+ 2026-08  | Cuidado personal |              2769 |         80709.41
+ 2026-08  | Congelados       |              2772 |         78164.18
+(64 rows)
+
+SELECT c.tipo_cliente,
+       count(DISTINCT c.id_cliente)                           AS clientes,
+       count(DISTINCT f.id_venta)                             AS ventas,
+       sum(f.monto_neto)                                      AS venta_neta,
+       round(sum(f.monto_neto) / count(DISTINCT f.id_venta), 2) AS ticket_promedio
+FROM marts.fct_ventas f
+JOIN marts.dim_cliente c ON c.sk_cliente = f.sk_cliente
+WHERE f.es_venta_valida
+GROUP BY c.tipo_cliente
+ORDER BY venta_neta DESC;
+   tipo_cliente   | clientes | ventas | venta_neta | ticket_promedio 
+------------------+----------+--------+------------+-----------------
+ Minorista        |      110 |    496 |  336491.51 |          678.41
+ Restaurante      |       44 |    201 |  155402.69 |          773.15
+ Mayorista        |       50 |    222 |  149958.45 |          675.49
+ Tienda de barrio |       45 |    210 |  138349.07 |          658.81
+(4 rows)
+
+SELECT p.sku,
+       p.nombre_producto,
+       pv.nombre_proveedor          AS proveedor_mas_barato,
+       c.costo_proveedor,
+       c.costo_base_producto,
+       c.diferencia_vs_costo_base,
+       c.plazo_dias
+FROM marts.fct_costos_proveedor c
+JOIN marts.dim_producto p   ON p.sk_producto = c.sk_producto
+JOIN marts.dim_proveedor pv ON pv.sk_proveedor = c.sk_proveedor
+WHERE c.es_proveedor_mas_barato
+ORDER BY c.diferencia_vs_costo_base
+LIMIT 15;
+   sku   |   nombre_producto   |    proveedor_mas_barato     | costo_proveedor | costo_base_producto | diferencia_vs_costo_base | plazo_dias 
+---------+---------------------+-----------------------------+-----------------+---------------------+--------------------------+------------
+ SG03009 | Bebida láctea       | Comercial Beta              |           50.45 |               54.45 |                    -4.00 |          3
+ SG05002 | Jabón de platos     | Abastecedora del Sur        |           45.87 |               49.21 |                    -3.34 |         10
+ SG04009 | Atún en lata        | Distribuciones Monja Blanca |           40.34 |               43.59 |                    -3.25 |         15
+ SG06001 | Shampoo             | Grupo La Ceiba              |           34.53 |               37.52 |                    -2.99 |          7
+ SG01002 | Bebida de naranja   | Abastecedora del Sur        |           51.05 |               53.92 |                    -2.87 |          7
+ SG06005 | Cepillo dental      | Grupo La Ceiba              |           34.65 |               37.40 |                    -2.75 |          3
+ SG08004 | Galleta mantequilla | Logística del Valle         |           50.07 |               52.80 |                    -2.73 |         10
+ SG07005 | Helado vainilla     | Grupo La Ceiba              |           43.06 |               45.76 |                    -2.70 |         10
+ SG03003 | Yogur fresa         | Logística del Valle         |           47.44 |               50.07 |                    -2.63 |         15
+ SG03010 | Leche chocolatada   | Grupo La Ceiba              |           30.70 |               33.32 |                    -2.62 |         10
+ SG06002 | Acondicionador      | Distribuidora Alfa          |           34.85 |               37.46 |                    -2.61 |          2
+ SG08009 | Pastelito           | Proveedora Metropolitana    |           36.56 |               39.02 |                    -2.46 |          2
+ SG03002 | Leche descremada    | Suministros Central         |           41.42 |               43.69 |                    -2.27 |         15
+ SG04008 | Salsa tomate        | Suministros Central         |           26.29 |               28.52 |                    -2.23 |          5
+ SG05005 | Limpiavidrios       | Proveedora Metropolitana    |           47.59 |               49.44 |                    -1.85 |         15
+(15 rows)
+
+SELECT d.dia_semana_iso,
+       d.nombre_dia,
+       count(DISTINCT f.id_venta) AS ventas,
+       sum(f.monto_neto)          AS venta_neta
+FROM marts.fct_ventas f
+JOIN marts.dim_fecha d ON d.sk_fecha = f.sk_fecha
+WHERE f.es_venta_valida
+GROUP BY d.dia_semana_iso, d.nombre_dia
+ORDER BY d.dia_semana_iso;
+ dia_semana_iso | nombre_dia | ventas | venta_neta 
+----------------+------------+--------+------------
+              1 | Lunes      |    157 |  103029.93
+              2 | Martes     |    158 |  110687.87
+              3 | Miércoles  |    169 |  124073.89
+              4 | Jueves     |    163 |  104520.40
+              5 | Viernes    |    153 |  101981.98
+              6 | Sábado     |    159 |  108123.95
+              7 | Domingo    |    170 |  127783.70
+(7 rows)
+

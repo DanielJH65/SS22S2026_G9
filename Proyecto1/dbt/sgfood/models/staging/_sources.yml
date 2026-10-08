@@ -1,0 +1,50 @@
+version: 2
+
+sources:
+  - name: oltp
+    description: >
+      Copia cruda de la base transaccional oltp_sgfood, cargada por Python
+      (src/sgfood_elt) en el schema raw del Data Warehouse.
+    schema: raw
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after: {count: 24, period: hour}
+        error_after: {count: 48, period: hour}
+    tables:
+      - name: oltp_sucursal
+        description: Sucursales (bodegas/puntos de venta) de SG-Food.
+      - name: oltp_categoria
+        description: Categorías de producto.
+      - name: oltp_marca
+        description: Marcas comercializadas.
+      - name: oltp_producto
+        description: Catálogo de productos con costo base y precio de lista.
+      - name: oltp_cliente
+        description: Clientes (datos ficticios).
+      - name: oltp_venta
+        description: Encabezado de venta (una fila por ticket).
+      - name: oltp_venta_detalle
+        description: Líneas de venta (producto, cantidad, precio, descuento, subtotal).
+
+  - name: archivos
+    description: >
+      Archivos CSV externos (WMS, área comercial, compras) cargados por Python
+      en raw como texto; el tipado ocurre en staging.
+    schema: raw
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after: {count: 24, period: hour}
+        error_after: {count: 48, period: hour}
+    tables:
+      - name: csv_inventario_bodega
+        description: Foto de inventario al cierre de cada mes por sucursal y producto.
+      - name: csv_metas_ventas
+        description: Metas mensuales de venta por sucursal.
+      - name: csv_promociones
+        description: Campañas de descuento por categoría y rango de fechas.
+      - name: csv_proveedores_precios
+        description: Costo y plazo de entrega por proveedor y producto.
+      - name: csv_devoluciones
+        description: Devoluciones de productos vendidos.

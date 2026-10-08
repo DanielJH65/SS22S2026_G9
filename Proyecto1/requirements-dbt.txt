@@ -1,0 +1,4 @@
+# dbt se instala en un entorno aislado (en Airflow: /opt/dbt-venv) para no
+# chocar con las dependencias de Airflow.
+dbt-core>=1.10,<2
+dbt-postgres>=1.9,<2

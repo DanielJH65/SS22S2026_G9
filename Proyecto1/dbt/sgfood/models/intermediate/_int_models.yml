@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: int_productos_enriquecidos
+    description: Producto + categoría + marca y margen de lista. Base de dim_producto.
+    columns:
+      - name: id_producto
+        data_tests: [unique, not_null]
+
+  - name: int_ventas_lineas
+    description: >
+      Línea de venta con encabezado, costo, promoción atribuida (categoría + fecha
+      dentro del rango; en traslapes gana el mayor descuento) y medidas calculadas.
+    columns:
+      - name: id_detalle
+        data_tests: [unique, not_null]
+      - name: es_venta_valida
+        description: TRUE solo para ventas COMPLETADA (las anuladas/pendientes no suman ingreso).
+        data_tests: [not_null]
+
+  - name: int_devoluciones_enriquecidas
+    description: Devolución con datos de la venta original y su valor monetario.
+    columns:
+      - name: id_devolucion
+        data_tests: [unique, not_null]
+      - name: precio_neto_unitario
+        description: Subtotal / cantidad de la venta original. NULL si la devolución no corresponde a ninguna línea vendida.
+        data_tests: [not_null]
+
+  - name: int_costos_proveedor
+    description: Costos de proveedor vs costo base y proveedor más barato por producto.

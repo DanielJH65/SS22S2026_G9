@@ -1,0 +1,331 @@
+version: 2
+
+# Modelo dimensional (estrella) con contrato forzado: dbt crea cada tabla con
+# exactamente estas columnas, tipos, PK y FK (iguales a sql/dw/00_ddl_datawarehouse.sql).
+# Llaves sustitutas sk_* = md5(llave natural); dim_fecha usa YYYYMMDD.
+# Cada dimensión tiene un miembro desconocido (llave natural -1).
+
+models:
+  # =============================================================== DIMENSIONES
+  - name: dim_fecha
+    description: Calendario diario (2025-2028) con atributos en español. sk_fecha = YYYYMMDD; -1 = desconocida.
+    columns:
+      - name: sk_fecha
+        data_type: integer
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: fecha
+        data_type: date
+        constraints: [{type: unique}]
+      - {name: anio, data_type: smallint}
+      - {name: trimestre, data_type: smallint}
+      - {name: mes, data_type: smallint}
+      - {name: nombre_mes, data_type: varchar(15)}
+      - {name: anio_mes, data_type: char(7), description: "Período 'YYYY-MM'"}
+      - {name: semana_iso, data_type: smallint}
+      - {name: dia_mes, data_type: smallint}
+      - {name: dia_semana_iso, data_type: smallint, description: "1 = lunes ... 7 = domingo"}
+      - {name: nombre_dia, data_type: varchar(15)}
+      - {name: es_fin_de_semana, data_type: boolean}
+
+  - name: dim_sucursal
+    description: Sucursales de SG-Food.
+    columns:
+      - name: sk_sucursal
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_sucursal
+        data_type: integer
+        constraints: [{type: not_null}, {type: unique}]
+      - name: nombre_sucursal
+        data_type: varchar(100)
+        constraints: [{type: not_null}]
+      - {name: ciudad, data_type: varchar(100)}
+      - {name: departamento, data_type: varchar(100)}
+
+  - name: dim_producto
+    description: Producto con categoría y marca desnormalizadas, costo, precio y margen de lista.
+    columns:
+      - name: sk_producto
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_producto
+        data_type: integer
+        constraints: [{type: not_null}, {type: unique}]
+      - {name: sku, data_type: varchar(20)}
+      - name: nombre_producto
+        data_type: varchar(150)
+        constraints: [{type: not_null}]
+      - {name: id_categoria, data_type: integer}
+      - {name: categoria, data_type: varchar(100)}
+      - {name: id_marca, data_type: integer}
+      - {name: marca, data_type: varchar(100)}
+      - {name: unidad_medida, data_type: varchar(30)}
+      - {name: costo_base, data_type: "numeric(12,2)"}
+      - {name: precio_lista, data_type: "numeric(12,2)"}
+      - {name: margen_lista_pct, data_type: "numeric(7,4)", description: "(precio_lista - costo_base) / precio_lista"}
+      - {name: activo, data_type: boolean}
+
+  - name: dim_cliente
+    description: Clientes. Incluye fecha_alta para validar ventas anteriores al alta.
+    columns:
+      - name: sk_cliente
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_cliente
+        data_type: integer
+        constraints: [{type: not_null}, {type: unique}]
+      - {name: nit, data_type: varchar(20)}
+      - name: nombre_cliente
+        data_type: varchar(150)
+        constraints: [{type: not_null}]
+      - {name: tipo_cliente, data_type: varchar(40)}
+      - {name: municipio, data_type: varchar(100)}
+      - {name: departamento, data_type: varchar(100)}
+      - {name: fecha_alta, data_type: date}
+
+  - name: dim_proveedor
+    description: Proveedores (solo existen en proveedores_precios.csv).
+    columns:
+      - name: sk_proveedor
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_proveedor
+        data_type: integer
+        constraints: [{type: not_null}, {type: unique}]
+      - name: nombre_proveedor
+        data_type: varchar(150)
+        constraints: [{type: not_null}]
+
+  - name: dim_promocion
+    description: Promociones por categoría. El miembro -1 representa "Sin promoción".
+    columns:
+      - name: sk_promocion
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_promocion
+        data_type: integer
+        constraints: [{type: not_null}, {type: unique}]
+      - name: nombre_promocion
+        data_type: varchar(150)
+        constraints: [{type: not_null}]
+      - {name: id_categoria, data_type: integer}
+      - {name: categoria, data_type: varchar(100)}
+      - {name: fecha_inicio, data_type: date}
+      - {name: fecha_fin, data_type: date}
+      - {name: porcentaje_descuento, data_type: "numeric(5,4)"}
+      - {name: duracion_dias, data_type: integer}
+
+  - name: dim_condicion_venta
+    description: Dimensión junk (canal x método de pago x estado de la venta).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [canal, metodo_pago, estado_venta]
+    columns:
+      - name: sk_condicion_venta
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: canal
+        data_type: varchar(30)
+        constraints: [{type: not_null}]
+      - name: metodo_pago
+        data_type: varchar(30)
+        constraints: [{type: not_null}]
+      - name: estado_venta
+        data_type: varchar(20)
+        constraints: [{type: not_null}]
+
+  # ==================================================================== HECHOS
+  - name: fct_ventas
+    description: >
+      Grano: una línea de venta. Incluye ventas anuladas y pendientes; para ingresos
+      reales filtrar es_venta_valida = TRUE.
+    columns:
+      - name: id_detalle
+        description: Dimensión degenerada (línea de venta). PK del hecho.
+        data_type: bigint
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: id_venta
+        description: Dimensión degenerada (ticket), permite contar ventas.
+        data_type: bigint
+        constraints: [{type: not_null}]
+      - name: sk_fecha
+        data_type: integer
+        constraints: &fk_fecha
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_fecha')", to_columns: [sk_fecha]}
+        data_tests: [no_apunta_a_desconocido]
+      - name: sk_cliente
+        data_type: varchar(32)
+        constraints: &fk_cliente
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_cliente')", to_columns: [sk_cliente]}
+        data_tests: &warn_desconocido
+          - no_apunta_a_desconocido:
+              config:
+                severity: warn
+      - name: sk_producto
+        data_type: varchar(32)
+        constraints: &fk_producto
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_producto')", to_columns: [sk_producto]}
+        data_tests: *warn_desconocido
+      - name: sk_sucursal
+        data_type: varchar(32)
+        constraints: &fk_sucursal
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_sucursal')", to_columns: [sk_sucursal]}
+        data_tests: *warn_desconocido
+      - name: sk_condicion_venta
+        data_type: varchar(32)
+        constraints:
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_condicion_venta')", to_columns: [sk_condicion_venta]}
+      - name: sk_promocion
+        description: Promoción atribuida; -1 = sin promoción vigente.
+        data_type: varchar(32)
+        constraints:
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_promocion')", to_columns: [sk_promocion]}
+      - {name: cantidad, data_type: integer, constraints: [{type: not_null}]}
+      - {name: precio_unitario, data_type: "numeric(12,2)", constraints: [{type: not_null}]}
+      - {name: descuento_pct, data_type: "numeric(5,4)", constraints: [{type: not_null}]}
+      - {name: monto_bruto, data_type: "numeric(14,2)", description: "cantidad * precio_unitario", constraints: [{type: not_null}]}
+      - {name: monto_descuento, data_type: "numeric(14,2)", description: "monto_bruto - monto_neto", constraints: [{type: not_null}]}
+      - {name: monto_neto, data_type: "numeric(14,2)", description: "Subtotal cobrado (fuente)", constraints: [{type: not_null}]}
+      - {name: costo_unitario, data_type: "numeric(12,2)", description: "costo_base del producto"}
+      - {name: costo_total, data_type: "numeric(14,2)"}
+      - {name: margen_bruto, data_type: "numeric(14,2)", description: "monto_neto - costo_total"}
+      - {name: es_venta_valida, data_type: boolean, constraints: [{type: not_null}]}
+
+  - name: fct_devoluciones
+    description: Grano - una devolución. dim_fecha juega dos roles (fecha devolución y fecha de la venta).
+    columns:
+      - name: id_devolucion
+        data_type: integer
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - {name: id_venta, data_type: bigint, constraints: [{type: not_null}]}
+      - name: sk_fecha
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - name: sk_fecha_venta
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - name: sk_producto
+        data_type: varchar(32)
+        constraints: *fk_producto
+        data_tests: *warn_desconocido
+      - name: sk_cliente
+        data_type: varchar(32)
+        constraints: *fk_cliente
+        data_tests: *warn_desconocido
+      - name: sk_sucursal
+        data_type: varchar(32)
+        constraints: *fk_sucursal
+        data_tests: *warn_desconocido
+      - {name: motivo, data_type: varchar(60), constraints: [{type: not_null}]}
+      - {name: cantidad_devuelta, data_type: integer, constraints: [{type: not_null}]}
+      - {name: precio_neto_unitario, data_type: "numeric(12,4)"}
+      - {name: monto_devuelto, data_type: "numeric(14,2)"}
+      - {name: dias_desde_venta, data_type: integer}
+
+  - name: fct_inventario_mensual
+    description: >
+      Snapshot periódico (cierre de mes x sucursal x producto). Medidas de stock
+      semi-aditivas: se suman entre sucursales/productos, no entre meses.
+    constraints:
+      - type: unique
+        columns: [sk_fecha_corte, sk_sucursal, sk_producto]
+    columns:
+      - name: sk_inventario
+        data_type: varchar(32)
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: sk_fecha_corte
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - name: sk_sucursal
+        data_type: varchar(32)
+        constraints: *fk_sucursal
+        data_tests: *warn_desconocido
+      - name: sk_producto
+        data_type: varchar(32)
+        constraints: *fk_producto
+        data_tests: *warn_desconocido
+      - name: sk_fecha_vencimiento
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - {name: lote, data_type: varchar(20)}
+      - {name: stock_disponible, data_type: integer, constraints: [{type: not_null}]}
+      - {name: stock_minimo, data_type: integer, constraints: [{type: not_null}]}
+      - {name: stock_maximo, data_type: integer, constraints: [{type: not_null}]}
+      - {name: costo_unitario, data_type: "numeric(12,2)"}
+      - {name: valor_inventario, data_type: "numeric(14,2)", description: "stock_disponible * costo_unitario"}
+      - {name: dias_para_vencer, data_type: integer}
+      - {name: es_sin_stock, data_type: boolean, constraints: [{type: not_null}]}
+      - {name: es_bajo_minimo, data_type: boolean, constraints: [{type: not_null}]}
+      - {name: es_sobre_maximo, data_type: boolean, constraints: [{type: not_null}]}
+
+  - name: fct_metas_ventas
+    description: Grano - mes x sucursal. sk_fecha_mes = primer día del mes.
+    constraints:
+      - type: primary_key
+        columns: [sk_fecha_mes, sk_sucursal]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [sk_fecha_mes, sk_sucursal]
+    columns:
+      - name: sk_fecha_mes
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - name: sk_sucursal
+        data_type: varchar(32)
+        constraints: *fk_sucursal
+        data_tests: *warn_desconocido
+      - {name: anio_mes, data_type: char(7), constraints: [{type: not_null}]}
+      - {name: meta_ventas, data_type: "numeric(14,2)", constraints: [{type: not_null}]}
+      - {name: meta_unidades, data_type: integer, constraints: [{type: not_null}]}
+
+  - name: fct_costos_proveedor
+    description: Grano - proveedor x producto x fecha de vigencia del costo.
+    constraints:
+      - type: primary_key
+        columns: [sk_proveedor, sk_producto, sk_fecha_vigencia]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [sk_proveedor, sk_producto, sk_fecha_vigencia]
+    columns:
+      - name: sk_proveedor
+        data_type: varchar(32)
+        constraints:
+          - {type: not_null}
+          - {type: foreign_key, to: "ref('dim_proveedor')", to_columns: [sk_proveedor]}
+      - name: sk_producto
+        data_type: varchar(32)
+        constraints: *fk_producto
+        data_tests: *warn_desconocido
+      - name: sk_fecha_vigencia
+        data_type: integer
+        constraints: *fk_fecha
+        data_tests: [no_apunta_a_desconocido]
+      - {name: costo_proveedor, data_type: "numeric(12,2)", constraints: [{type: not_null}]}
+      - {name: plazo_dias, data_type: smallint}
+      - {name: costo_base_producto, data_type: "numeric(12,2)"}
+      - {name: diferencia_vs_costo_base, data_type: "numeric(12,2)", description: "costo_proveedor - costo_base"}
+      - {name: es_proveedor_mas_barato, data_type: boolean, constraints: [{type: not_null}]}
