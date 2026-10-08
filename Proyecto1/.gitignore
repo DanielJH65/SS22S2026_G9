@@ -1,0 +1,17 @@
+# Credenciales locales
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# dbt
+dbt/sgfood/target/
+dbt/sgfood/logs/
+dbt/sgfood/dbt_packages/
+dbt/sgfood/.user.yml
+
+# Airflow
+logs/
+airflow/logs/

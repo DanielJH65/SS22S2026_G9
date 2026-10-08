@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: mart_cumplimiento_metas
+    description: Venta real (COMPLETADA) vs meta mensual por sucursal, neta de devoluciones.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [anio_mes, id_sucursal]
+    columns:
+      - name: pct_cumplimiento_ventas
+        description: venta_neta / meta_ventas (1.0 = 100 %).
+      - name: venta_neta
+        data_tests: [not_null]
+
+  - name: mart_alertas_inventario
+    description: >
+      Inventario del último corte con estado (SIN STOCK / BAJO MÍNIMO / SOBRE STOCK / OK),
+      rotación de los últimos 3 meses, meses de cobertura y alerta de vencimiento.
+    columns:
+      - name: estado_stock
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['SIN STOCK', 'BAJO MÍNIMO', 'SOBRE STOCK', 'OK']
+
+exposures:
+  - name: tablero_metabase_sgfood
+    label: Tablero comercial SG-Food (Metabase)
+    type: dashboard
+    maturity: medium
+    url: http://localhost:3000
+    description: Ventas, cumplimiento de metas e inventario para la gerencia de SG-Food.
+    owner:
+      name: Grupo 9 - Seminario de Sistemas 2
+    depends_on:
+      - ref('mart_cumplimiento_metas')
+      - ref('mart_alertas_inventario')
+      - ref('fct_ventas')

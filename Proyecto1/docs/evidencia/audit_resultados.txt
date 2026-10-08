@@ -1,0 +1,107 @@
+EVIDENCIA · schema audit del Data Warehouse
+==============================================================================
+
+-- Resumen por corrida (audit.pipeline_run)
+              dag_run_id              | status  | loads_ok | loads_failed | checks_passed | checks_failed | checks_warned |                           detail                           
+--------------------------------------+---------+----------+--------------+---------------+---------------+---------------+------------------------------------------------------------
+ scheduled__2026-10-07T12:00:00+00:00 | SUCCESS |       12 |            0 |            32 |             0 |             2 | 2 advertencias de calidad
+ evidencia_1_corrida_limpia           | SUCCESS |       12 |            0 |            32 |             0 |             2 | 2 advertencias de calidad
+ evidencia_2_casos_calidad            | FAILED  |       13 |            0 |             0 |             0 |             0 | las validaciones no se ejecutaron (falló una etapa previa)
+ evidencia_3_corrida_limpia           | SUCCESS |       12 |            0 |            32 |             0 |             2 | 2 advertencias de calidad
+(4 rows)
+
+
+-- Cargas por corrida (audit.etl_load_log)
+              dag_run_id              |         source_name          |        target_table         | load_mode | rows_extracted | rows_loaded | status  | segundos 
+--------------------------------------+------------------------------+-----------------------------+-----------+----------------+-------------+---------+----------
+ scheduled__2026-10-07T12:00:00+00:00 | promociones.csv              | raw.csv_promociones         | full      |             30 |          30 | SUCCESS |     0.12
+ scheduled__2026-10-07T12:00:00+00:00 | inventario_bodega.csv        | raw.csv_inventario_bodega   | full      |           3840 |        3840 | SUCCESS |     0.26
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.categoria        | raw.oltp_categoria          | full      |              8 |           8 | SUCCESS |     0.10
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.marca            | raw.oltp_marca              | full      |             10 |          10 | SUCCESS |     0.14
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.venta            | raw.oltp_venta              | full      |           1200 |        1200 | SUCCESS |     0.22
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.venta_detalle    | raw.oltp_venta_detalle      | full      |           3209 |        3209 | SUCCESS |     0.28
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.sucursal         | raw.oltp_sucursal           | full      |              6 |           6 | SUCCESS |     0.18
+ scheduled__2026-10-07T12:00:00+00:00 | proveedores_precios.csv      | raw.csv_proveedores_precios | full      |            103 |         103 | SUCCESS |     0.21
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.cliente          | raw.oltp_cliente            | full      |            250 |         250 | SUCCESS |     0.18
+ scheduled__2026-10-07T12:00:00+00:00 | oltp_sgfood.producto         | raw.oltp_producto           | full      |             80 |          80 | SUCCESS |     0.14
+ scheduled__2026-10-07T12:00:00+00:00 | devoluciones.csv             | raw.csv_devoluciones        | full      |             80 |          80 | SUCCESS |     0.14
+ scheduled__2026-10-07T12:00:00+00:00 | metas_ventas.csv             | raw.csv_metas_ventas        | full      |             48 |          48 | SUCCESS |     0.15
+ evidencia_1_corrida_limpia           | devoluciones.csv             | raw.csv_devoluciones        | full      |             80 |          80 | SUCCESS |     0.09
+ evidencia_1_corrida_limpia           | proveedores_precios.csv      | raw.csv_proveedores_precios | full      |            103 |         103 | SUCCESS |     0.10
+ evidencia_1_corrida_limpia           | metas_ventas.csv             | raw.csv_metas_ventas        | full      |             48 |          48 | SUCCESS |     0.10
+ evidencia_1_corrida_limpia           | oltp_sgfood.marca            | raw.oltp_marca              | full      |             10 |          10 | SUCCESS |     0.10
+ evidencia_1_corrida_limpia           | oltp_sgfood.producto         | raw.oltp_producto           | full      |             80 |          80 | SUCCESS |     0.16
+ evidencia_1_corrida_limpia           | oltp_sgfood.venta_detalle    | raw.oltp_venta_detalle      | full      |           3209 |        3209 | SUCCESS |     0.28
+ evidencia_1_corrida_limpia           | promociones.csv              | raw.csv_promociones         | full      |             30 |          30 | SUCCESS |     0.14
+ evidencia_1_corrida_limpia           | inventario_bodega.csv        | raw.csv_inventario_bodega   | full      |           3840 |        3840 | SUCCESS |     0.26
+ evidencia_1_corrida_limpia           | oltp_sgfood.sucursal         | raw.oltp_sucursal           | full      |              6 |           6 | SUCCESS |     0.14
+ evidencia_1_corrida_limpia           | oltp_sgfood.categoria        | raw.oltp_categoria          | full      |              8 |           8 | SUCCESS |     0.13
+ evidencia_1_corrida_limpia           | oltp_sgfood.venta            | raw.oltp_venta              | full      |           1200 |        1200 | SUCCESS |     0.17
+ evidencia_1_corrida_limpia           | oltp_sgfood.cliente          | raw.oltp_cliente            | full      |            250 |         250 | SUCCESS |     0.16
+ evidencia_2_casos_calidad            | proveedores_precios.csv      | raw.csv_proveedores_precios | full      |            103 |         103 | SUCCESS |     0.98
+ evidencia_2_casos_calidad            | devoluciones.csv             | raw.csv_devoluciones        | full      |             80 |          80 | SUCCESS |     0.95
+ evidencia_2_casos_calidad            | oltp_sgfood.cliente          | raw.oltp_cliente            | full      |            250 |         250 | SUCCESS |     0.85
+ evidencia_2_casos_calidad            | metas_ventas.csv             | raw.csv_metas_ventas        | full      |             48 |          48 | SUCCESS |     0.91
+ evidencia_2_casos_calidad            | oltp_sgfood.venta_detalle    | raw.oltp_venta_detalle      | full      |           3209 |        3209 | SUCCESS |     0.79
+ evidencia_2_casos_calidad            | inventario_bodega.csv        | raw.csv_inventario_bodega   | full      |           3840 |        3840 | SUCCESS |     1.10
+ evidencia_2_casos_calidad            | oltp_sgfood.sucursal         | raw.oltp_sucursal           | full      |              6 |           6 | SUCCESS |     0.73
+ evidencia_2_casos_calidad            | oltp_sgfood.producto         | raw.oltp_producto           | full      |             80 |          80 | SUCCESS |     1.03
+ evidencia_2_casos_calidad            | oltp_sgfood.marca            | raw.oltp_marca              | full      |             10 |          10 | SUCCESS |     0.63
+ evidencia_2_casos_calidad            | oltp_sgfood.venta            | raw.oltp_venta              | full      |           1200 |        1200 | SUCCESS |     0.64
+ evidencia_2_casos_calidad            | oltp_sgfood.categoria        | raw.oltp_categoria          | full      |              8 |           8 | SUCCESS |     0.36
+ evidencia_2_casos_calidad            | promociones.csv              | raw.csv_promociones         | full      |             30 |          30 | SUCCESS |     0.40
+ evidencia_2_casos_calidad            | casos_calidad_opcionales.csv | raw.*                       | append    |             10 |          10 | SUCCESS |     0.07
+ evidencia_3_corrida_limpia           | inventario_bodega.csv        | raw.csv_inventario_bodega   | full      |           3840 |        3840 | SUCCESS |     0.23
+ evidencia_3_corrida_limpia           | proveedores_precios.csv      | raw.csv_proveedores_precios | full      |            103 |         103 | SUCCESS |     0.20
+ evidencia_3_corrida_limpia           | devoluciones.csv             | raw.csv_devoluciones        | full      |             80 |          80 | SUCCESS |     0.14
+ evidencia_3_corrida_limpia           | oltp_sgfood.venta            | raw.oltp_venta              | full      |           1200 |        1200 | SUCCESS |     0.09
+ evidencia_3_corrida_limpia           | oltp_sgfood.marca            | raw.oltp_marca              | full      |             10 |          10 | SUCCESS |     0.08
+ evidencia_3_corrida_limpia           | oltp_sgfood.producto         | raw.oltp_producto           | full      |             80 |          80 | SUCCESS |     0.08
+ evidencia_3_corrida_limpia           | oltp_sgfood.categoria        | raw.oltp_categoria          | full      |              8 |           8 | SUCCESS |     0.07
+ evidencia_3_corrida_limpia           | metas_ventas.csv             | raw.csv_metas_ventas        | full      |             48 |          48 | SUCCESS |     0.08
+ evidencia_3_corrida_limpia           | oltp_sgfood.venta_detalle    | raw.oltp_venta_detalle      | full      |           3209 |        3209 | SUCCESS |     0.12
+ evidencia_3_corrida_limpia           | oltp_sgfood.sucursal         | raw.oltp_sucursal           | full      |              6 |           6 | SUCCESS |     0.07
+ evidencia_3_corrida_limpia           | promociones.csv              | raw.csv_promociones         | full      |             30 |          30 | SUCCESS |     0.05
+ evidencia_3_corrida_limpia           | oltp_sgfood.cliente          | raw.oltp_cliente            | full      |            250 |         250 | SUCCESS |     0.05
+(49 rows)
+
+
+-- Validaciones SQL de la última corrida limpia (audit.validation_result)
+               check_name               |   check_type   | severity | failing_rows | passed 
+----------------------------------------+----------------+----------+--------------+--------
+ reconciliacion_oltp_raw_sucursal       | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_categoria      | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_marca          | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_producto       | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_cliente        | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_venta          | conteo         | error    |            0 | t
+ reconciliacion_oltp_raw_venta_detalle  | conteo         | error    |            0 | t
+ raw_tablas_con_datos                   | conteo         | error    |            0 | t
+ reconciliacion_conteos_raw_vs_marts    | conteo         | error    |            0 | t
+ reconciliacion_montos_ventas           | conteo         | error    |            0 | t
+ reconciliacion_stock_inventario        | conteo         | error    |            0 | t
+ dim_fecha_cubre_hechos                 | conteo         | error    |            0 | t
+ raw_venta_sin_cliente                  | integridad     | error    |            0 | t
+ raw_venta_sin_sucursal                 | integridad     | error    |            0 | t
+ raw_detalle_sin_venta_o_producto       | integridad     | error    |            0 | t
+ raw_inventario_sin_producto_o_sucursal | integridad     | error    |            0 | t
+ raw_devolucion_sin_linea_vendida       | integridad     | error    |            0 | t
+ raw_proveedor_producto_inexistente     | integridad     | error    |            0 | t
+ marts_fct_ventas_huerfanos             | integridad     | error    |            0 | t
+ marts_hechos_en_miembro_desconocido    | integridad     | warn     |            0 | t
+ marts_fk_fisicas_presentes             | integridad     | error    |            0 | t
+ raw_llaves_nulas                       | nulos_unicidad | error    |            0 | t
+ raw_llaves_duplicadas                  | nulos_unicidad | error    |            0 | t
+ raw_medidas_nulas                      | nulos_unicidad | error    |            0 | t
+ marts_llaves_naturales_unicas          | nulos_unicidad | error    |            0 | t
+ marts_un_solo_miembro_desconocido      | nulos_unicidad | error    |            0 | t
+ ventas_montos_consistentes             | negocio        | error    |            0 | t
+ ventas_valores_validos                 | negocio        | error    |            0 | t
+ devoluciones_no_superan_venta          | negocio        | error    |            0 | t
+ devoluciones_posteriores_a_venta       | negocio        | error    |            0 | t
+ inventario_sin_negativos_ni_vencidos   | negocio        | error    |            0 | t
+ metas_positivas                        | negocio        | error    |            0 | t
+ inventario_sobre_stock                 | negocio        | warn     |          265 | f
+ ventas_antes_del_alta_cliente          | negocio        | warn     |           40 | f
+(34 rows)
+

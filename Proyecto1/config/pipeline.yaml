@@ -1,0 +1,71 @@
+# Configuración declarativa del Extract & Load.
+# Agregar una tabla o archivo nuevo = agregar una entrada aquí (sin tocar código).
+#
+# mode:
+#   full         TRUNCATE + COPY dentro de una sola transacción (idempotente).
+#   incremental  Re-extrae desde (último watermark - lookback_days) y reemplaza
+#                en raw las filas de esas llaves (DELETE + COPY en una transacción).
+#                El lookback captura cambios de estado (PENDIENTE -> COMPLETADA).
+
+oltp:
+  schema: oltp_sgfood
+  tables:
+    - name: sucursal
+      target: raw.oltp_sucursal
+      mode: full
+    - name: categoria
+      target: raw.oltp_categoria
+      mode: full
+    - name: marca
+      target: raw.oltp_marca
+      mode: full
+    - name: producto
+      target: raw.oltp_producto
+      mode: full
+    - name: cliente
+      target: raw.oltp_cliente
+      mode: full
+    - name: venta
+      target: raw.oltp_venta
+      mode: full
+      # Para usar incremental: cambiar mode y mantener estos campos
+      watermark_column: fecha
+      lookback_days: 7
+      key_column: id_venta
+    - name: venta_detalle
+      target: raw.oltp_venta_detalle
+      mode: full
+      # venta_detalle no tiene fecha: en incremental se filtra por la fecha de su venta
+      watermark_column: fecha
+      watermark_query: >
+        SELECT d.* FROM oltp_sgfood.venta_detalle d
+        JOIN oltp_sgfood.venta v ON v.id_venta = d.id_venta
+        WHERE v.fecha >= %(since)s
+      watermark_max_query: SELECT max(fecha) FROM oltp_sgfood.venta
+      lookback_days: 7
+      key_column: id_detalle
+
+csv:
+  directory: csv            # relativo a DATA_DIR
+  encoding: utf-8-sig       # los archivos traen BOM UTF-8
+  delimiter: ","
+  files:
+    - file: inventario_bodega.csv
+      target: raw.csv_inventario_bodega
+      columns: [fecha_corte, id_sucursal, id_producto, stock_disponible, stock_minimo,
+                stock_maximo, lote, fecha_vencimiento]
+    - file: metas_ventas.csv
+      target: raw.csv_metas_ventas
+      columns: [periodo, id_sucursal, meta_ventas, meta_unidades]
+    - file: promociones.csv
+      target: raw.csv_promociones
+      columns: [id_promocion, nombre, fecha_inicio, fecha_fin, id_categoria, porcentaje_descuento]
+    - file: proveedores_precios.csv
+      target: raw.csv_proveedores_precios
+      columns: [id_proveedor, proveedor, id_producto, costo_proveedor, plazo_dias, fecha_vigencia]
+    - file: devoluciones.csv
+      target: raw.csv_devoluciones
+      columns: [id_devolucion, fecha, id_venta, id_producto, cantidad, motivo]
+
+quality_cases:
+  file: quality_cases/casos_calidad_opcionales.csv   # relativo a DATA_DIR

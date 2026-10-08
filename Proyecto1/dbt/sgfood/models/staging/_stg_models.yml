@@ -1,0 +1,331 @@
+version: 2
+
+# Capa staging: 1 vista por tabla fuente. Solo limpieza, tipado y renombrado.
+# Aquí viven las pruebas de calidad de entrada: si fallan (severity error) dbt
+# detiene la construcción de los modelos que dependen de ellas.
+
+models:
+  # ---------------------------------------------------------------- OLTP
+  - name: stg_oltp__sucursal
+    description: Sucursales de SG-Food.
+    columns:
+      - name: id_sucursal
+        description: Llave natural de la sucursal.
+        data_tests: [unique, not_null]
+      - name: nombre_sucursal
+        data_tests: [not_null]
+
+  - name: stg_oltp__categoria
+    description: Categorías de producto.
+    columns:
+      - name: id_categoria
+        data_tests: [unique, not_null]
+      - name: categoria
+        data_tests: [unique, not_null]
+
+  - name: stg_oltp__marca
+    description: Marcas de producto.
+    columns:
+      - name: id_marca
+        data_tests: [unique, not_null]
+      - name: marca
+        data_tests: [unique, not_null]
+
+  - name: stg_oltp__producto
+    description: Catálogo de productos.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "precio_lista >= costo_base"
+          config:
+            severity: warn
+    columns:
+      - name: id_producto
+        data_tests: [unique, not_null]
+      - name: sku
+        data_tests: [unique, not_null]
+      - name: id_categoria
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__categoria')
+                field: id_categoria
+      - name: id_marca
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__marca')
+                field: id_marca
+      - name: costo_base
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: precio_lista
+        description: Precio de lista; nunca negativo (caso de calidad "Precio negativo").
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: stg_oltp__cliente
+    description: Clientes. El nombre puede repetirse; la identidad es id_cliente.
+    columns:
+      - name: id_cliente
+        description: Llave natural (caso de calidad "NULL en identificador").
+        data_tests: [unique, not_null]
+      - name: nombre_cliente
+        data_tests: [not_null]
+      - name: tipo_cliente
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Tienda de barrio', 'Minorista', 'Mayorista', 'Restaurante']
+      - name: fecha_alta
+        data_tests: [not_null]
+
+  - name: stg_oltp__venta
+    description: Encabezado de venta.
+    columns:
+      - name: id_venta
+        data_tests: [unique, not_null]
+      - name: fecha_venta
+        data_tests: [not_null]
+      - name: id_cliente
+        description: Cliente que compra (caso de calidad "FK huérfana").
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__cliente')
+                field: id_cliente
+      - name: id_sucursal
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__sucursal')
+                field: id_sucursal
+      - name: canal
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Tienda', 'Mayorista', 'Televenta', 'Web']
+      - name: metodo_pago
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito']
+      - name: estado_venta
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['COMPLETADA', 'ANULADA', 'PENDIENTE']
+
+  - name: stg_oltp__venta_detalle
+    description: Líneas de venta.
+    columns:
+      - name: id_detalle
+        data_tests: [unique, not_null]
+      - name: id_venta
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__venta')
+                field: id_venta
+      - name: id_producto
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__producto')
+                field: id_producto
+      - name: cantidad
+        description: Unidades vendidas; mínimo 1 (caso de calidad "Cantidad cero").
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: precio_unitario
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: descuento_pct
+        description: Descuento como proporción 0-1 (caso de calidad "Descuento mayor a 100%").
+        data_tests: [not_null, porcentaje_valido]
+      - name: monto_neto
+        description: Subtotal de la línea ya con descuento.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  # ---------------------------------------------------------------- CSV
+  - name: stg_csv__inventario_bodega
+    description: Inventario al cierre de mes (snapshot) por sucursal y producto.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [fecha_corte, id_sucursal, id_producto]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "stock_minimo <= stock_maximo"
+      - dbt_utils.expression_is_true:
+          description: Regla de negocio informativa; la fuente sí la incumple (sobre-stock).
+          arguments:
+            expression: "stock_disponible <= stock_maximo"
+          config:
+            severity: warn
+    columns:
+      - name: fecha_corte
+        data_tests: [not_null]
+      - name: id_sucursal
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__sucursal')
+                field: id_sucursal
+      - name: id_producto
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__producto')
+                field: id_producto
+      - name: stock_disponible
+        description: Existencia; nunca negativa (caso de calidad "Stock negativo").
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: stock_minimo
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: fecha_vencimiento
+        data_tests: [not_null]
+
+  - name: stg_csv__metas_ventas
+    description: Metas mensuales por sucursal.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [anio_mes, id_sucursal]
+    columns:
+      - name: fecha_mes
+        data_tests: [not_null]
+      - name: id_sucursal
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__sucursal')
+                field: id_sucursal
+      - name: meta_ventas
+        description: Meta en quetzales; estrictamente positiva (caso de calidad "Meta cero").
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      - name: meta_unidades
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+
+  - name: stg_csv__promociones
+    description: Promociones por categoría.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "fecha_inicio <= fecha_fin"
+    columns:
+      - name: id_promocion
+        data_tests: [unique, not_null]
+      - name: id_categoria
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__categoria')
+                field: id_categoria
+      - name: porcentaje_descuento
+        data_tests: [not_null, porcentaje_valido]
+
+  - name: stg_csv__proveedores_precios
+    description: Costos de proveedor por producto y fecha de vigencia.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [id_proveedor, id_producto, fecha_vigencia]
+    columns:
+      - name: id_proveedor
+        data_tests: [not_null]
+      - name: id_producto
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__producto')
+                field: id_producto
+      - name: costo_proveedor
+        description: Costo unitario (caso de calidad "Costo nulo").
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: plazo_dias
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: stg_csv__devoluciones
+    description: Devoluciones de productos vendidos.
+    columns:
+      - name: id_devolucion
+        data_tests: [unique, not_null]
+      - name: id_venta
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__venta')
+                field: id_venta
+      - name: id_producto
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_oltp__producto')
+                field: id_producto
+      - name: cantidad_devuelta
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: motivo
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Vencimiento cercano', 'Error de despacho', 'Cliente desistió',
+                         'Producto dañado', 'Empaque defectuoso']

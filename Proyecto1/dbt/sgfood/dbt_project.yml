@@ -1,0 +1,41 @@
+name: sgfood
+version: "1.0.0"
+config-version: 2
+profile: sgfood
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Rango de dim_fecha: cubre ventas (2026) y vencimientos de inventario (hasta 2028)
+  fecha_inicio_dim: "2025-01-01"
+  fecha_fin_dim: "2028-12-31"
+
+models:
+  sgfood:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+      core:
+        # Contrato: columnas, tipos, PK y FK se crean exactamente como se declaran
+        +contract:
+          enforced: true
+      reporting:
+        +materialized: table
+
+data_tests:
+  sgfood:
+    # Las filas que fallan una prueba quedan guardadas en el schema test_failures
+    +store_failures: true
+    +schema: test_failures
